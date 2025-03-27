@@ -1,13 +1,13 @@
 import csv
 import logging
 import os
-import random
 import re
 import shutil
 import sqlite3
-import string
+import sys
 import time
 from datetime import datetime
+from logging.handlers import RotatingFileHandler
 
 import pymupdf
 import pytesseract
@@ -15,22 +15,52 @@ import pytz
 from PIL import Image
 from PyPDF2 import PdfMerger, PdfReader
 from PyPDF2.errors import PdfReadError
+from dotenv import load_dotenv
 from thefuzz import fuzz
 from watchdog.events import FileSystemEventHandler, DirCreatedEvent, FileCreatedEvent
 from watchdog.observers import Observer
 
-PATH_ARCHIVOS = r'C:\Users\Jonas\OneDrive\Documentos\GNSYS\valija'
-PATH_SUCURSALES = r'C:\Users\Jonas\OneDrive\Documentos\GNSYS\sucursales'
-TESSERACT_PATH = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-logger = logging.getLogger(__name__)
-logging.basicConfig(format='%(asctime)s%(levelname)s:%(message)s', level=logging.DEBUG, )
+load_dotenv()
+
+PATH_ARCHIVOS = os.getenv('PATH_ARCHIVOS')
+PATH_SUCURSALES = os.getenv('PATH_SUCURSALES')
+PROVEEDORES_CSV = os.getenv('PROVEEDORES_CSV')
+SUCURSALES_CSV = os.getenv('SUCURSALES_CSV')
+TESSERACT_PATH = os.getenv('TESSERACT_PATH')
+try:
+    LOG_SIZE_IN_BYTES = int(os.getenv('LOG_SIZE_IN_BYTES'))
+except ValueError:
+    LOG_SIZE_IN_BYTES = 1000000
+try:
+    NUMBER_OF_LOGS = int(os.getenv('NUMBER_OF_LOGS'))
+except ValueError:
+    NUMBER_OF_LOGS = 3
 pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
+
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
+
+stdout_handler = logging.StreamHandler(sys.stdout)
+stdout_handler.setLevel(logging.DEBUG)
+stdout_handler.setFormatter(formatter)
+
+file_handler = RotatingFileHandler('logs.log',
+                                   encoding='utf-8',
+                                   maxBytes=LOG_SIZE_IN_BYTES,
+                                   backupCount=NUMBER_OF_LOGS
+                                   )
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(stdout_handler)
 
 
 def get_proveedores_csv() -> []:
     proveedores = []
     try:
-        with open('./proveedores.csv', newline='') as csvfile:
+        with open(PROVEEDORES_CSV, newline='') as csvfile:
             csv_proveedores = csv.reader(csvfile, skipinitialspace=True)
             for row in csv_proveedores:
                 dict_proveedor = {
@@ -46,7 +76,7 @@ def get_proveedores_csv() -> []:
         logger.error(e)
 
 
-def get_documento(nombre_documento: str, path_documento: str, visible: bool|None) -> {}:
+def get_documento(nombre_documento: str, path_documento: str, visible: bool | None) -> {}:
     documento = {}
     try:
         conn = sqlite3.connect('db.sqlite3')
@@ -173,7 +203,7 @@ def get_nombre_proveedor(path_documento: str) -> str | None:
 
 def get_sucursal_csv(numero_serie: str) -> str | None:
     try:
-        with open('./equipos_sucursal.csv', newline='') as csvfile:
+        with open(SUCURSALES_CSV, newline='') as csvfile:
             csv_sucurlsales = csv.reader(csvfile, skipinitialspace=True)
             for row in csv_sucurlsales:
                 if row[0] == numero_serie:
@@ -184,6 +214,7 @@ def get_sucursal_csv(numero_serie: str) -> str | None:
     except Exception as e:
         logger.error(f'Error al leer el archivo equipos_sucursal.csv: {e}')
         return None
+
 
 def get_size(path_documento: str) -> int:
     try:
@@ -200,6 +231,7 @@ def get_size(path_documento: str) -> int:
     except Exception as e:
         logger.error(f'Error al leer el archivo: {e}')
     return 0
+
 
 def insertar_en_base_de_datos(documento):
     logger.debug(f'Insertando en la base de datos')
@@ -498,14 +530,14 @@ def crea_paths(path_archivo: str, nombre_archivo: str) -> []:
 
 
 def mueve_archivo(path_archivo_origen: str, path_archivo_destino: str, overwrite: bool) -> str:
-
-    def number_generator(path: str, numbers = 100000, length = 6) -> str:
+    def number_generator(path: str, numbers=100000, length=6) -> str:
         directorio, archivo = os.path.split(path_archivo_destino)
         nombre_archivo, extension = os.path.splitext(archivo)
-        for i in range(1,100000):
-            path_aux = os.path.join(directorio,f'{nombre_archivo}_{i:0{length}}{extension}')
+        for i in range(1, 100000):
+            path_aux = os.path.join(directorio, f'{nombre_archivo}_{i:0{length}}{extension}')
             if not os.path.exists(path_aux):
                 return path_aux
+
     if not overwrite and os.path.exists(path_archivo_destino):
         path_archivo_destino = number_generator(path_archivo_destino)
 
@@ -554,7 +586,6 @@ def eliminar_archivo(path_archivo: str) -> bool:
     except FileNotFoundError:
         logger.error('No se encontró el archivo a eliminar.')
     return resultado
-
 
 
 class FileObserver(FileSystemEventHandler):
