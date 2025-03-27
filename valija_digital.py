@@ -27,6 +27,8 @@ PATH_SUCURSALES = os.getenv('PATH_SUCURSALES')
 PROVEEDORES_CSV = os.getenv('PROVEEDORES_CSV')
 SUCURSALES_CSV = os.getenv('SUCURSALES_CSV')
 TESSERACT_PATH = os.getenv('TESSERACT_PATH')
+DATABASE_PATH = os.getenv('DATABASE_PATH')
+LOG_FILENAME = os.getenv('LOG_FILENAME')
 try:
     LOG_SIZE_IN_BYTES = int(os.getenv('LOG_SIZE_IN_BYTES'))
 except ValueError:
@@ -45,7 +47,7 @@ stdout_handler = logging.StreamHandler(sys.stdout)
 stdout_handler.setLevel(logging.DEBUG)
 stdout_handler.setFormatter(formatter)
 
-file_handler = RotatingFileHandler('logs.log',
+file_handler = RotatingFileHandler(LOG_FILENAME,
                                    encoding='utf-8',
                                    maxBytes=LOG_SIZE_IN_BYTES,
                                    backupCount=NUMBER_OF_LOGS
@@ -79,7 +81,7 @@ def get_proveedores_csv() -> []:
 def get_documento(nombre_documento: str, path_documento: str, visible: bool | None) -> {}:
     documento = {}
     try:
-        conn = sqlite3.connect('db.sqlite3')
+        conn = sqlite3.connect(DATABASE_PATH)
         statement = '''SELECT d.id, d.name, d.current_path FROM documents_documents d where d.name = $1 and d.current_path = $2'''
         cursor_obj = conn.cursor()
         cursor_obj.execute(statement, [nombre_documento, path_documento])
@@ -256,7 +258,7 @@ def insertar_log(log: {}) -> bool:
     resultado = False
     datetime_now = datetime.now(pytz.timezone('UTC'))
     try:
-        conn = sqlite3.connect('db.sqlite3')
+        conn = sqlite3.connect(DATABASE_PATH)
         statement = '''
                 insert into logs_logs (log, documents_id,date) values ($1, $2, $3)
             '''
@@ -276,7 +278,7 @@ def insertar_documento(documento: {}) -> {}:
     documento_dic = {}
     datetime_now = datetime.now(pytz.timezone('UTC'))
     try:
-        conn = sqlite3.connect('db.sqlite3')
+        conn = sqlite3.connect(DATABASE_PATH)
         statement = '''
                     insert into documents_documents (name, current_path, visible, size, uploaded_at) 
                     values ($1, $2, $3, $4, $5)
@@ -308,7 +310,7 @@ def insertar_documento(documento: {}) -> {}:
 def update_ruta_documento(id_archivo: int, nueva_ruta: str) -> {}:
     documento_dic = {}
     try:
-        conn = sqlite3.connect('db.sqlite3')
+        conn = sqlite3.connect(DATABASE_PATH)
         statement = """
                     update documents_documents 
                     set current_path = '{s2}'
@@ -338,7 +340,7 @@ def update_ruta_documento(id_archivo: int, nueva_ruta: str) -> {}:
 def update_size(documento: {}) -> {}:
     documento_dic = {}
     try:
-        conn = sqlite3.connect('db.sqlite3')
+        conn = sqlite3.connect(DATABASE_PATH)
         statement = '''
                     update documents_documents 
                     set size = $1
