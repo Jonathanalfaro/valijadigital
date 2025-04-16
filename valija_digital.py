@@ -620,7 +620,9 @@ class FileObserver(FileSystemEventHandler):
                             }
                             insertar_en_base_de_datos(doc)
                     elif flujo == 'GASTOS':
-                        path_destino = os.path.join(nuevo_path, nombre)
+                        nombre_arch, extension_arch = os.path.splitext(nombre)
+                        nombre_completo = f'{nombre_arch}-COMPLETO{extension_arch}'
+                        path_destino = os.path.join(nuevo_path, nombre_completo)
                         if os.path.exists(path_destino):
                             resultado_unir = unir_documentos(path_destino, path_nuevo_archivo)
                             if resultado_unir:
@@ -641,7 +643,7 @@ class FileObserver(FileSystemEventHandler):
                             path = mueve_archivo(path_nuevo_archivo, path_destino, overwrite=True)
                             if path:
                                 doc = {
-                                    'name': nombre,
+                                    'name': nombre_completo,
                                     'current_path': nuevo_path,
                                     'visible': True,
                                 }
