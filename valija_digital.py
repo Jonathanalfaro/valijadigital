@@ -72,6 +72,19 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 logger.addHandler(stdout_handler)
 
+def get_conf_csv() -> {}:
+    conf = {}
+    try:
+        with open('conf.csv', newline='') as csvfile:
+            csv_conf = csv.reader(csvfile, skipinitialspace=True)
+            for row in csv_conf:
+                conf.update({row[0]: row[1]})
+        return conf
+    except FileNotFoundError:
+        logger.error('No se encontro el archivo conf.csv')
+        return {}
+    except Exception as e:
+        logger.error(e)
 
 def get_proveedores_csv() -> []:
     proveedores = []
@@ -441,8 +454,12 @@ def crea_paths(path_archivo: str, nombre_archivo: str) -> []:
     except IndexError:
         logger.error('Error al obtener la carpeta superior')
         raise ValueError
+    dic_configuracion = get_conf_csv()
+    separador_carpeta = dic_configuracion['separador_carpeta']
+    separador_nombre = dic_configuracion['separador_nombre']
+    complemento_nombre_completo = dic_configuracion['complemento_nombre_completo']
     path_sucursal = os.path.join(PATH_SUCURSALES, carpeta_raiz_sucursal)
-    path_sucursal_flujo = os.path.join(path_sucursal, f'{sucursal} - {flujo}')
+    path_sucursal_flujo = os.path.join(path_sucursal, f'{sucursal}{separador_carpeta}{flujo}')
     path_anio = os.path.join(path_sucursal_flujo, anio)
     try:
         mes_texto = MESES[str(mes)]
@@ -477,13 +494,13 @@ def crea_paths(path_archivo: str, nombre_archivo: str) -> []:
         raise ValueError
     if flujo == 'BANCOS':
         nuevo_path = path_mes
-        nuevo_nombre = f'{sucursal}-{fecha}{complemento_archivo}'
+        nuevo_nombre = f'{sucursal}{separador_nombre}{fecha}{complemento_archivo}'
     elif flujo == 'CUENTAS POR PAGAR':
         if carpeta_superior == 'DEVOLUCIONES':
             try:
                 nombre_carpeta_superior = 'HOJAS DE DEVOLUCION - DVSR - DEVO'
                 nuevo_path = os.path.join(path_mes, nombre_carpeta_superior)
-                nuevo_nombre = f'{sucursal}-{fecha}{complemento_archivo}'
+                nuevo_nombre = f'{sucursal}{separador_nombre}{fecha}{complemento_archivo}'
                 if not os.path.exists(nuevo_path):
                     os.mkdir(nuevo_path)
                     logger.debug(f'Creando carpeta {nuevo_path}')
@@ -501,10 +518,10 @@ def crea_paths(path_archivo: str, nombre_archivo: str) -> []:
                 nombre_proveedor = get_nombre_proveedor(path_archivo)
                 if nombre_proveedor:
                     logger.debug(f'Se encontró el nombre del proveedor {nombre_proveedor}')
-                    nuevo_nombre = f'{sucursal}-{nombre_proveedor}-{fecha}{complemento_archivo}'
+                    nuevo_nombre = f'{sucursal}{separador_nombre}{nombre_proveedor}-{fecha}{complemento_archivo}'
                 else:
                     logger.debug(f'No se encontró el nombre del proveedor.')
-                    nuevo_nombre = f'{sucursal}-{fecha}{complemento_archivo}'
+                    nuevo_nombre = f'{sucursal}{separador_nombre}{fecha}{complemento_archivo}'
             except ValueError:
                 logger.error('Error al obtener el nombre del proveedor')
                 raise ValueError
@@ -531,7 +548,7 @@ def crea_paths(path_archivo: str, nombre_archivo: str) -> []:
         if carpeta_superior == 'COMPRAS DE MERCANCIA':
             nombre_carpeta_superior = 'COMPRA DE MERCANCIA'
             nuevo_path = os.path.join(path_mes, nombre_carpeta_superior)
-            nuevo_nombre = f'{sucursal}-COMPRA-{fecha}{extension_incompleto}'
+            nuevo_nombre = f'{sucursal}{separador_nombre}COMPRA-{fecha}{extension_incompleto}'
             try:
                 if not os.path.exists(nuevo_path):
                     os.mkdir(nuevo_path)
@@ -547,7 +564,7 @@ def crea_paths(path_archivo: str, nombre_archivo: str) -> []:
                 raise ValueError
         elif carpeta_superior == 'GASTOS OPERATIVOS':
             nuevo_path = os.path.join(path_mes, carpeta_superior)
-            nuevo_nombre = f'{sucursal}-GASTO-{fecha}{complemento_archivo}'
+            nuevo_nombre = f'{sucursal}{separador_nombre}GASTO-{fecha}{complemento_archivo}'
             try:
                 if not os.path.exists(nuevo_path):
                     os.mkdir(nuevo_path)
@@ -655,7 +672,9 @@ class FileObserver(FileSystemEventHandler):
                             insertar_en_base_de_datos(doc)
                     elif flujo == 'GASTOS':
                         nombre_arch, extension_arch = os.path.splitext(nombre)
-                        nombre_completo = f'{nombre_arch}-COMPLETO{extension_arch}'
+                        dic_configuracion = get_conf_csv()
+                        complemento_nombre_completo = dic_configuracion['complemento_nombre_completo']
+                        nombre_completo = f'{nombre_arch}{complemento_nombre_completo}{extension_arch}'
                         path_destino = os.path.join(nuevo_path, nombre_completo)
                         if os.path.exists(path_destino):
                             resultado_unir = unir_documentos(path_destino, path_nuevo_archivo)
