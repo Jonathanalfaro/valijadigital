@@ -29,6 +29,20 @@ SUCURSALES_CSV = os.getenv('SUCURSALES_CSV')
 TESSERACT_PATH = os.getenv('TESSERACT_PATH')
 DATABASE_PATH = os.getenv('DATABASE_PATH')
 LOG_FILENAME = os.getenv('LOG_FILENAME')
+MESES = {
+    '01': 'ENERO',
+    '02': 'FEBRERO',
+    '03': 'MARZO',
+    '04': 'ABRIL',
+    '05': 'MAYO',
+    '06': 'JUNIO',
+    '07': 'JULIO',
+    '08': 'AGOSTO',
+    '09': 'SEPTIEMBRE',
+    '10': 'OCTUBRE',
+    '11': 'NOVIEMBRE',
+    '12': 'DICIEMBRE'
+}
 try:
     LOG_SIZE_IN_BYTES = int(os.getenv('LOG_SIZE_IN_BYTES'))
 except ValueError:
@@ -209,13 +223,14 @@ def get_sucursal_csv(numero_serie: str) -> str | None:
             csv_sucurlsales = csv.reader(csvfile, skipinitialspace=True)
             for row in csv_sucurlsales:
                 if row[0] == numero_serie:
-                    return row[1]
+                    return row[1], row[2]
+            return None,None
     except FileNotFoundError:
         logger.error('No se encontró el archivo equipos_sucursal.csv')
-        return None
+        return None, None
     except Exception as e:
         logger.error(f'Error al leer el archivo equipos_sucursal.csv: {e}')
-        return None
+        return None, None
 
 
 def get_size(path_documento: str) -> int:
@@ -398,9 +413,13 @@ def crea_paths(path_archivo: str, nombre_archivo: str) -> []:
         logger.error('Nombre de archivo inválido')
         raise ValueError
     #### OBTIENE LA SUCURSAL
-    sucursal = get_sucursal_csv(numero_serie)
+    sucursal, carpeta_raiz_sucursal = get_sucursal_csv(numero_serie)
     if not sucursal:
         logger.error('No se encontró la sucursal')
+        raise ValueError
+    #### OBTIENE EL NOMBRE DE LA CARPETA RAÍZ
+    if not carpeta_raiz_sucursal:
+        logger.error('No se encontró la carpeta raíz de la sucursal')
         raise ValueError
     ###Obtiene el año y mes desde la fecha que debe estar en formato yyyy-mm-dd
     lista_fecha = fecha.split('-')
@@ -422,10 +441,15 @@ def crea_paths(path_archivo: str, nombre_archivo: str) -> []:
     except IndexError:
         logger.error('Error al obtener la carpeta superior')
         raise ValueError
-    path_sucursal_flujo = os.path.join(PATH_SUCURSALES, f'{sucursal}-{flujo}')
+    path_sucursal = os.path.join(PATH_SUCURSALES, carpeta_raiz_sucursal)
+    path_sucursal_flujo = os.path.join(path_sucursal, f'{sucursal} - {flujo}')
     path_anio = os.path.join(path_sucursal_flujo, anio)
-    path_mes = os.path.join(path_anio, mes)
+    mes_texto = MESES[str(mes)]
+    path_mes = os.path.join(path_anio, mes_texto)
     try:
+        if not os.path.exists(path_sucursal):
+            logger.debug(f'Creando carpeta {path_sucursal}')
+            os.mkdir(path_sucursal)
         if not os.path.exists(path_sucursal_flujo):
             logger.debug(f'Creando carpeta {path_sucursal_flujo}')
             os.mkdir(path_sucursal_flujo)
