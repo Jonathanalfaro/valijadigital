@@ -444,7 +444,14 @@ def crea_paths(path_archivo: str, nombre_archivo: str) -> []:
     path_sucursal = os.path.join(PATH_SUCURSALES, carpeta_raiz_sucursal)
     path_sucursal_flujo = os.path.join(path_sucursal, f'{sucursal} - {flujo}')
     path_anio = os.path.join(path_sucursal_flujo, anio)
-    mes_texto = MESES[str(mes)]
+    try:
+        mes_texto = MESES[str(mes)]
+    except KeyError:
+        logger.error('Error al obtener el mes')
+        raise ValueError
+    except Exception as e:
+        logger.error(f'Error desconocido {e}')
+        raise ValueError
     path_mes = os.path.join(path_anio, mes_texto)
     try:
         if not os.path.exists(path_sucursal):
