@@ -481,7 +481,8 @@ def crea_paths(path_archivo: str, nombre_archivo: str) -> []:
     elif flujo == 'CUENTAS POR PAGAR':
         if carpeta_superior == 'DEVOLUCIONES':
             try:
-                nuevo_path = os.path.join(path_mes, carpeta_superior)
+                nombre_carpeta_superior = 'HOJAS DE DEVOLUCION - DVSR - DEVO'
+                nuevo_path = os.path.join(path_mes, nombre_carpeta_superior)
                 nuevo_nombre = f'{sucursal}-{fecha}{complemento_archivo}'
                 if not os.path.exists(nuevo_path):
                     os.mkdir(nuevo_path)
@@ -508,7 +509,8 @@ def crea_paths(path_archivo: str, nombre_archivo: str) -> []:
                 logger.error('Error al obtener el nombre del proveedor')
                 raise ValueError
             try:
-                nuevo_path = os.path.join(path_mes, carpeta_superior)
+                nombre_carpeta_superior = 'FACTURAS DE PROVEEDORES Y CONTRA RECIBOS'
+                nuevo_path = os.path.join(path_mes, nombre_carpeta_superior)
                 if not os.path.exists(nuevo_path):
                     os.mkdir(nuevo_path)
                     logger.debug(f'Creando carpeta {nuevo_path}')
@@ -527,7 +529,8 @@ def crea_paths(path_archivo: str, nombre_archivo: str) -> []:
         if match_incompleto:
             extension_incompleto = f'_{match_incompleto.group(1)}.pdf'
         if carpeta_superior == 'COMPRAS DE MERCANCIA':
-            nuevo_path = os.path.join(path_mes, carpeta_superior)
+            nombre_carpeta_superior = 'COMPRA DE MERCANCIA'
+            nuevo_path = os.path.join(path_mes, nombre_carpeta_superior)
             nuevo_nombre = f'{sucursal}-COMPRA-{fecha}{extension_incompleto}'
             try:
                 if not os.path.exists(nuevo_path):
