@@ -232,7 +232,7 @@ def get_nombre_proveedor(path_documento: str) -> str | None:
 
 def get_sucursal_csv(numero_serie: str) -> str | None:
     try:
-        with open(SUCURSALES_CSV, newline='') as csvfile:
+        with open(SUCURSALES_CSV, newline='', encoding='utf-8') as csvfile:
             csv_sucurlsales = csv.reader(csvfile, skipinitialspace=True)
             for row in csv_sucurlsales:
                 if row[0] == numero_serie:
