@@ -89,7 +89,7 @@ def get_conf_csv() -> {}:
 def get_proveedores_csv() -> []:
     proveedores = []
     try:
-        with open(PROVEEDORES_CSV, newline='') as csvfile:
+        with open(PROVEEDORES_CSV, newline='', encoding='utf-8') as csvfile:
             csv_proveedores = csv.reader(csvfile, skipinitialspace=True)
             for row in csv_proveedores:
                 dict_proveedor = {
