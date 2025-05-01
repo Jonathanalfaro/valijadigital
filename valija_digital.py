@@ -406,6 +406,7 @@ def crea_paths(path_archivo: str, nombre_archivo: str) -> []:
     carpeta_superior = ''
     nuevo_path = ''
     nuevo_nombre = ''
+    complemento = ''
     #### OBTIENE EL FLUJO
     try:
         flujo = nombre_carpeta.split('-')[1]
@@ -461,6 +462,7 @@ def crea_paths(path_archivo: str, nombre_archivo: str) -> []:
     path_sucursal = os.path.join(PATH_SUCURSALES, carpeta_raiz_sucursal)
     path_sucursal_flujo = os.path.join(path_sucursal, f'{sucursal}{separador_carpeta}{flujo}')
     path_anio = os.path.join(path_sucursal_flujo, anio)
+
     try:
         mes_texto = MESES[str(mes)]
     except KeyError:
@@ -545,6 +547,7 @@ def crea_paths(path_archivo: str, nombre_archivo: str) -> []:
         extension_incompleto = '.pdf'
         if match_incompleto:
             extension_incompleto = f'_{match_incompleto.group(1)}.pdf'
+            complemento = f'_{match_incompleto.group(1)}'
         if carpeta_superior == 'COMPRAS DE MERCANCIA':
             nombre_carpeta_superior = 'COMPRA DE MERCANCIA'
             nuevo_path = os.path.join(path_mes, nombre_carpeta_superior)
@@ -579,7 +582,7 @@ def crea_paths(path_archivo: str, nombre_archivo: str) -> []:
                 logger.error(f'Error desconocido {e}')
                 raise ValueError
 
-    return [nuevo_nombre, nuevo_path, flujo, sucursal]
+    return [nuevo_nombre, nuevo_path, flujo, sucursal, complemento]
 
 
 def mueve_archivo(path_archivo_origen: str, path_archivo_destino: str, overwrite: bool) -> str:
@@ -598,14 +601,14 @@ def mueve_archivo(path_archivo_origen: str, path_archivo_destino: str, overwrite
         shutil.move(path_archivo_origen, path_archivo_destino)
         return path_archivo_destino
     except PermissionError:
-        logger.error('Error. No se puede mover el archivo, compruebe los permisos.')
+        logger.info('Error. No se puede mover el archivo, compruebe los permisos.')
         time.sleep(3)
         logger.info('Intentando mover el archivo nuevamente')
         try:
             shutil.move(path_archivo_origen, path_archivo_destino)
             return path_archivo_destino
         except Exception as e:
-            logger.error('Error. No se puede mover el archivo, compruebe los permisos.')
+            logger.error('Error. No se pudo mover el archivo, compruebe los permisos y elimínelo manualmente.')
     except FileNotFoundError:
         logger.error('No se encontró el archivo.')
     except shutil.Error:
@@ -655,7 +658,7 @@ class FileObserver(FileSystemEventHandler):
                     return
                 else:
                     try:
-                        [nombre, nuevo_path, flujo, sucursal] = crea_paths(path_nuevo_archivo, nombre_archivo)
+                        [nombre, nuevo_path, flujo, sucursal, complemento] = crea_paths(path_nuevo_archivo, nombre_archivo)
                     except ValueError:
                         logger.error('No se pudo crear el path.')
                         return
@@ -675,6 +678,8 @@ class FileObserver(FileSystemEventHandler):
                         dic_configuracion = get_conf_csv()
                         complemento_nombre_completo = dic_configuracion['complemento_nombre_completo']
                         nombre_completo = f'{nombre_arch}{complemento_nombre_completo}{extension_arch}'
+                        if complemento != '':
+                            nombre_completo = nombre_completo.replace(f'{complemento}.pdf', '.pdf')
                         path_destino = os.path.join(nuevo_path, nombre_completo)
                         if os.path.exists(path_destino):
                             resultado_unir = unir_documentos(path_destino, path_nuevo_archivo)
@@ -690,7 +695,15 @@ class FileObserver(FileSystemEventHandler):
                                         'documents': doc['id']
                                     }
                                     insertar_log(log)
-                                eliminar_archivo(path_nuevo_archivo)
+                                resultado_eliminar = eliminar_archivo(path_nuevo_archivo)
+                                if not resultado_eliminar:
+                                    logger.info('No se pudo eliminar el archivo. Reintentando...')
+                                    time.sleep(2)
+                                    resultado_eliminar2 =eliminar_archivo(path_nuevo_archivo)
+                                    if not resultado_eliminar2:
+                                        logger.info('No se pudo eliminar el archivo. Eliminar manualmente.')
+                                    else:
+                                        logger.info('Se eliminó el archivo.')
 
                         else:
                             path = mueve_archivo(path_nuevo_archivo, path_destino, overwrite=True)
@@ -704,7 +717,7 @@ class FileObserver(FileSystemEventHandler):
                     else:
                         logger.error('Flujo desconocido.')
                         return
-                logger.debug(f'Se procesó el documento {path_nuevo_archivo}')
+                logger.info(f'Se procesó el documento {path_nuevo_archivo}')
 
 
 if __name__ == "__main__":
