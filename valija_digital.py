@@ -152,6 +152,16 @@ def get_nombre_proveedor(path_documento: str) -> str | None:
     if os.path.exists(path_documento) and os.path.isfile(path_documento) and 'COMPLETO' not in path_documento:
 
         logger.debug(f'Obteniendo nombre de proveedor')
+        conf_similitud = 75
+        try:
+            dif_conf = get_conf_csv()
+            conf_similitud = int(dif_conf['similitud'])
+        except ValueError:
+            conf_similitud = 75
+        except KeyError:
+            conf_similitud = 75
+        except Exception as e:
+            conf_similitud = 75
         nombre_scan_proveedor = None
         try:
             doc = pymupdf.open(path_documento)
@@ -212,11 +222,22 @@ def get_nombre_proveedor(path_documento: str) -> str | None:
                 proveedores = get_proveedores_csv()
                 nombres_proveedores = [x['name'] for x in proveedores]
                 nombres_scan_proveedores = [x['scan_name'] for x in proveedores]
-
+                posibles_proveedores = []
+                similitudes = []
                 if nombre_proveedor:
+                    nombre_proveedor_sanitizado = (nombre_proveedor.replace(' ', '')
+                                              .replace(',', '')
+                                              .replace('.', '').lower())
                     for k, nombre in enumerate(nombres_proveedores):
-                        if fuzz.ratio(nombre.lower(), nombre_proveedor.replace(',', '').lower()) > 65:
-                            nombre_scan_proveedor = nombres_scan_proveedores[k]
+                        nombre_sanitizado = (nombre.replace(' ', '')
+                                             .replace(',', '')
+                                             .replace('.', '').lower())
+                        similitud = fuzz.ratio(nombre_sanitizado,nombre_proveedor_sanitizado)
+                        posibles_proveedores.append(nombres_scan_proveedores[k])
+                        similitudes.append(similitud)
+                    maxima_similitud = max(similitudes)
+                    if maxima_similitud > conf_similitud:
+                        nombre_scan_proveedor = posibles_proveedores[similitudes.index(maxima_similitud)]
                 else:
                     for dato in datos_proveedor:
                         if dato in nombres_scan_proveedores:
